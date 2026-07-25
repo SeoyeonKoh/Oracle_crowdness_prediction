@@ -1,0 +1,2 @@
+# 설치: pip3 install -r requirements.txt --break-system-packages
+requests>=2.31.0

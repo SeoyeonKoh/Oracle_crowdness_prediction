@@ -3,8 +3,9 @@
 ==========================================
 
 수집 대상 : 서울 열린데이터광장 - 서울 실시간 도시데이터 (citydata)
-필요 인증키 : SEOUL_OPENDATA_GENERAL_KEY (일반 인증키)
-저장 위치 : data/citydata/YYYY-MM-DD.jsonl
+필요 인증키 : SEOUL_OPENDATA_GENERAL_KEY (일반 인증키, config/APIkey.py)
+저장 위치 : (프로젝트 루트)/data/citydata/YYYY-MM-DD.jsonl
+파일 위치 : collectors/ 안. 어디서 실행하든 경로는 파일 기준으로 계산한다.
 
 이 프로젝트는 앞으로 수집기가 여러 개가 된다.
 (지하철 도착정보, 서울교통공사 혼잡도정보 등)
@@ -43,13 +44,18 @@ import requests
 # ============================================================
 # 인증키
 # ============================================================
-# 키는 이 파일에 적지 않는다. 같은 폴더의 APIkey.py 에서 읽어온다.
+# 키는 이 파일에 적지 않는다. config/APIkey.py 에서 읽어온다.
 # APIkey.py 는 .gitignore 에 들어 있어 깃허브에 올라가지 않는다.
-# 만드는 법은 APIkey_example.py 참고.
+# 만드는 법은 config/APIkey_example.py 참고.
 #
 # 이름을 데이터셋이 아니라 '발급처 + 키 종류'로 붙인 이유:
 # 열린데이터광장은 데이터셋마다 키를 주지 않는다. 일반 인증키 하나로
 # 실시간 도시데이터를 포함한 여러 서울시 OpenAPI를 호출한다.
+
+# 이 파일은 collectors/ 안에 있으므로, 프로젝트 루트는 한 단계 위다.
+# 어느 폴더에서 실행해도 동작하도록 모든 경로를 이 기준으로 계산한다.
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "config"))
 
 try:
     from APIkey import SEOUL_OPENDATA_GENERAL_KEY
@@ -99,8 +105,7 @@ KST = timezone(timedelta(hours=9))
 CITYDATA_SOURCE_ID = "seoul_citydata"   # 레코드마다 어느 수집기가 만든 건지 표시
 CITYDATA_API_URL = "http://openapi.seoul.go.kr:8088/{key}/json/citydata/1/5/{poi}"
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CITYDATA_DIR = os.path.join(BASE_DIR, "data", "citydata")
+CITYDATA_DIR = os.path.join(PROJECT_ROOT, "data", "citydata")
 CITYDATA_COUNTER_PATH = os.path.join(CITYDATA_DIR, "call_counter.json")
 
 
@@ -191,9 +196,9 @@ def detect_citydata_api_error(payload):
 
 def main():
     if not SEOUL_OPENDATA_GENERAL_KEY:
-        log("중단: 인증키가 없습니다. 같은 폴더에 APIkey.py 를 만들고")
+        log("중단: 인증키가 없습니다. config/APIkey.py 를 만들고")
         log('       SEOUL_OPENDATA_GENERAL_KEY = "발급받은키"  한 줄을 넣으세요.')
-        log("       (APIkey_example.py 참고)")
+        log("       (config/APIkey_example.py 참고)")
         sys.exit(1)
 
     os.makedirs(CITYDATA_DIR, exist_ok=True)

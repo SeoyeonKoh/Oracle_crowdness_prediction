@@ -6,6 +6,7 @@ APIkey.py
 data/
 *.jsonl
 *.log
+logs/
 
 # 오라클 DB 접속 파일
 wallet/

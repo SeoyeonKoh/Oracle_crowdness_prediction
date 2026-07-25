@@ -2,12 +2,13 @@
 인증키 보관 파일 — 사본 만드는 법
 ====================================
 
-이 파일을 복사해서 같은 폴더에 APIkey.py 라는 이름으로 저장하고,
+이 파일을 복사해서 config/APIkey.py 라는 이름으로 저장하고,
 발급받은 키를 채워 넣으세요.
 
-    cp APIkey_example.py APIkey.py     (윈도우는 그냥 복사·붙여넣기 후 이름 변경)
+    cp config/APIkey_example.py config/APIkey.py
+    (윈도우는 그냥 복사·붙여넣기 후 이름 변경)
 
-APIkey.py 는 .gitignore 에 등록되어 있어 깃허브에 올라가지 않습니다.
+config/APIkey.py 는 .gitignore 에 등록되어 있어 깃허브에 올라가지 않습니다.
 이 파일(APIkey_example.py)은 값이 비어 있으므로 올라가도 안전합니다.
 팀원은 이 파일을 보고 어떤 키가 필요한지 알 수 있습니다.
 

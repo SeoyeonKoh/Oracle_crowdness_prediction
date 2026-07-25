@@ -12,10 +12,16 @@
 
 ```
 collector/
-├── collect_citydata.py      실시간 도시데이터 수집기
-├── APIkey_example.py        인증키 서식 (깃허브에 올라감)
-├── APIkey.py                실제 인증키 (깃허브에 안 올라감)
+├── collectors/              데이터를 가져오는 코드
+│   └── collect_citydata.py  실시간 도시데이터 수집기
+├── config/                  인증키와 설정
+│   ├── APIkey_example.py    인증키 서식 (깃허브에 올라감)
+│   └── APIkey.py            실제 인증키 (깃허브에 안 올라감)
+├── scripts/                 서버 설정·자동화 스크립트
+│   └── setup_server.sh
+├── logs/                    실행 로그 (깃허브에 안 올라감)
 ├── .gitignore
+├── requirements.txt
 ├── README.md
 └── data/
     └── citydata/
@@ -23,23 +29,38 @@ collector/
         └── call_counter.json     오늘 호출 수
 ```
 
+수집기는 자기 위치(collectors/) 기준으로 프로젝트 루트를 계산하므로
+어느 폴더에서 실행해도 저장 경로가 어긋나지 않는다.
+
 수집기가 늘어나면 같은 규칙으로 붙인다.
 
 | 데이터 | 스크립트 | 저장 위치 | 필요 키 |
 |---|---|---|---|
-| 실시간 도시데이터 | `collect_citydata.py` | `data/citydata/` | `SEOUL_OPENDATA_GENERAL_KEY` |
-| (예정) 지하철 도착정보 | `collect_subway_arrival.py` | `data/subway_arrival/` | `SEOUL_OPENDATA_SUBWAY_KEY` |
-| (예정) 서울교통공사 혼잡도 | `collect_subway_congestion.py` | `data/subway_congestion/` | `DATA_GO_KR_KEY` |
+| 실시간 도시데이터 | `collectors/collect_citydata.py` | `data/citydata/` | `SEOUL_OPENDATA_GENERAL_KEY` |
+| (예정) 지하철 도착정보 | `collectors/collect_subway_arrival.py` | `data/subway_arrival/` | `SEOUL_OPENDATA_SUBWAY_KEY` |
+| (예정) 서울교통공사 혼잡도 | `collectors/collect_subway_congestion.py` | `data/subway_congestion/` | `DATA_GO_KR_KEY` |
 
 ### 이름 규칙
 
 - 인증키: `{발급처}_{키 종류}_KEY`
   데이터셋 이름이 아니라 발급처 기준이다. 열린데이터광장은 데이터셋마다
   키를 주지 않고, 일반 인증키 하나로 여러 API를 호출한다.
-- 스크립트: `collect_{데이터}.py`
+- 수집 코드: `collectors/collect_{데이터}.py`
+- 설정 파일: `config/`
+- 서버 자동화: `scripts/`
 - 저장 폴더: `data/{데이터}/`
+- 로그: `logs/{데이터}.log`
 - 각 레코드에 `source` 필드를 넣어 어느 수집기가 만들었는지 남긴다.
   나중에 여러 소스를 합칠 때 필요하다.
+
+### 깃허브 공개 기준
+
+기준은 하나: **인터넷에 공개돼도 괜찮은가?**
+
+- 올라감: 코드, `scripts/`, `config/APIkey_example.py`(빈 서식), 문서
+- 안 올라감(.gitignore 자동 차단): `config/APIkey.py`, `data/`, `logs/`, `wallet/`
+- SSH 키(`collector.key`)는 애초에 저장소 폴더에 두지 않는다
+- push 전 `git status` 로 APIkey.py 가 목록에 없는지 확인하는 습관
 
 ---
 
@@ -47,6 +68,7 @@ collector/
 
 | 항목 | 값 |
 |---|---|
+| 상태 | **가동 중** — OCI 도쿄 서버(collector-server)에서 cron 자동 수집 |
 | 대상 장소 | 경기도민 유입 관문 환승역 12곳 |
 | 수집 간격 | 러시아워(07~09, 17~19시) 10분 / 그 외 30분 |
 | 하루 호출 | 864회 |
@@ -67,29 +89,34 @@ collector/
 ## 처음 설치
 
 ```bash
-pip install requests
+pip3 install -r requirements.txt
 ```
+
+(맥은 `pip` 가 아니라 `pip3`. 서버(우분투 24)에서는
+`pip3 install -r requirements.txt --break-system-packages`)
 
 인증키 파일을 만든다.
 
 ```bash
-cp APIkey_example.py APIkey.py
+cp config/APIkey_example.py config/APIkey.py
 ```
 
-`APIkey.py` 를 열어 발급받은 키를 채운다.
+`config/APIkey.py` 를 열어 발급받은 키를 채운다.
 
 ```python
 SEOUL_OPENDATA_GENERAL_KEY = "발급받은키"
 ```
 
-`APIkey.py` 는 `.gitignore` 에 있어 깃허브에 올라가지 않는다.
+`config/APIkey.py` 는 `.gitignore` 에 있어 깃허브에 올라가지 않는다.
 **키를 코드에 직접 적지 말 것.**
 
 ## 한 번 실행해 보기
 
 ```bash
-python3 collect_citydata.py
+python3 collectors/collect_citydata.py
 ```
+
+(pyenv 환경에서는 `python` 이 아니라 `python3`)
 
 성공하면 이렇게 나온다.
 
@@ -102,19 +129,31 @@ python3 collect_citydata.py
 
 ## 자동 반복 걸기 (서버)
 
+**권장: 설치 스크립트 사용.** 폴더 구조 생성, 시간대 설정, cron 등록·재시작을
+한 번에 처리하고, 여러 번 실행해도 안전하다.
+
 ```bash
-crontab -e
+# [맥북] 전송 (프로젝트 루트에서)
+scp -i ~/.ssh/collector.key scripts/setup_server.sh ubuntu@서버IP:~/
+# [서버] 실행
+bash ~/setup_server.sh
 ```
 
-두 줄을 넣는다. 러시아워는 촘촘하게, 나머지는 성기게.
+직접 걸 때는 `crontab -e` 에 두 줄. 러시아워는 촘촘하게, 나머지는 성기게.
 
 ```
-*/10 7-9,17-19 * * * cd /home/ubuntu/collector && /usr/bin/python3 collect_citydata.py >> citydata.log 2>&1
-*/30 0-6,10-16,20-23 * * * cd /home/ubuntu/collector && /usr/bin/python3 collect_citydata.py >> citydata.log 2>&1
+*/10 7-9,17-19 * * * cd /home/ubuntu/collector && /usr/bin/python3 collectors/collect_citydata.py >> logs/citydata.log 2>&1
+*/30 0-6,10-16,20-23 * * * cd /home/ubuntu/collector && /usr/bin/python3 collectors/collect_citydata.py >> logs/citydata.log 2>&1
 ```
 
 - python3 경로가 다를 수 있다. `which python3` 로 확인
 - cron은 서버 재부팅 후 자동으로 다시 시작된다
+- **⚠️ 시간대를 바꿨다면 cron 재시작 필수.** cron 데몬은 시작 시점의
+  시간대를 계속 쓴다. 안 하면 러시아워 예약이 9시간 어긋난 시각에 돈다.
+  ```bash
+  sudo timedatectl set-timezone Asia/Seoul
+  sudo systemctl restart cron
+  ```
 
 등록 확인:
 
@@ -126,12 +165,15 @@ crontab -l
 
 ```bash
 ls -l data/citydata/                    # 날짜별 파일이 커지고 있어야 한다
-tail -30 citydata.log                   # 최근 수집 기록
+tail -30 logs/citydata.log              # 최근 수집 기록
 wc -l data/citydata/*.jsonl             # 날짜별 누적 건수
 cat data/citydata/call_counter.json     # 오늘 호출 수
 ```
 
 하루 정상 동작 시 줄 수는 `장소 수 × 72` 근처가 된다. (12곳이면 864줄)
+
+`logs/citydata.log` 는 cron이 처음 실행될 때 생긴다.
+파일이 없으면 오류가 아니라 "cron이 아직 안 돌았다"는 신호다.
 
 ## 멈추기 / 다시 시작하기
 
@@ -184,6 +226,17 @@ crontab -e     # 해당 줄 맨 앞에 # 를 붙이면 중단, 지우면 재개
 - 다음 주기에 cron이 다시 실행한다
 
 **몇 번 빠지는 것은 허용한다. 스케줄러가 죽는 것이 진짜 사고다.**
+
+---
+
+## 알려진 함정 (실전에서 겪은 것)
+
+- **시간대 변경 후 cron 재시작 필수** — 위 자동 반복 절 참고
+- **scp/ssh 는 맥북 창에서, 나머지는 서버 창에서** — 프롬프트로 구분:
+  `%` 로 끝나면 맥북, `ubuntu@...$` 면 서버
+- **공백이 든 경로는 따옴표로 감싼다** — 또는 Finder에서 터미널로 드래그
+- **pyenv 환경에서는 `python3` / `pip3`** — `python` 은 command not found
+- **대중교통 승하차는 01~05시 미제공** — 그 시간대 항목이 비어도 정상
 
 ---
 
