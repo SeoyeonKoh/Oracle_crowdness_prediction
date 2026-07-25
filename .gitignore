@@ -1,0 +1,24 @@
+# Auth keys - never commit
+APIkey.py
+secret.py
+.env
+
+# Collected data
+data/
+*.jsonl
+log.txt
+
+# Oracle DB connection files
+wallet/
+Wallet_*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
