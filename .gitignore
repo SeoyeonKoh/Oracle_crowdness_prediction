@@ -1,24 +1,23 @@
-# Auth keys - never commit
+# 인증키 — 절대 올리지 말 것
 APIkey.py
-secret.py
 .env
 
-# Collected data
+# 수집한 데이터 — 용량이 크고 깃허브에 올릴 이유가 없다
 data/
 *.jsonl
-log.txt
+*.log
 
-# Oracle DB connection files
+# 오라클 DB 접속 파일
 wallet/
 Wallet_*.zip
 
-# Python
+# 파이썬
 __pycache__/
 *.pyc
 .venv/
 venv/
 
-# Editor and OS files
+# 편집기·OS
 .vscode/
 .idea/
 .DS_Store
