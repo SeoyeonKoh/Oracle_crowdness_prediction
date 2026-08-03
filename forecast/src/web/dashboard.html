@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apex 데이터·혼잡도 대시보드</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--line:#e6e8eb;--ink:#1c2024;--muted:#6b7280;--accent:#3730a3;
+ --real:#1a9e6b;--approx:#e0972a;--fake:#d64848;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px 40px}
+header{background:var(--accent);color:#fff;padding:22px 16px;margin:0 -16px 16px}
+header .h{max-width:1000px;margin:0 auto}
+h1{font-size:22px;margin:0}
+.sub{opacity:.82;font-size:13px;margin-top:3px}
+h2{font-size:15px;margin:22px 4px 10px;color:var(--muted);font-weight:600}
+.grid{display:grid;gap:12px}
+.g4{grid-template-columns:repeat(4,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:720px){.g4{grid-template-columns:repeat(2,1fr)}.g3,.g2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.kpi .n{font-size:26px;font-weight:700;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:4px}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #f0f1f3}
+th{color:var(--muted);font-weight:600}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;color:#fff;white-space:nowrap}
+.b-real{background:var(--real)} .b-approx{background:var(--approx)} .b-fake{background:var(--fake)}
+.b-out{background:var(--muted)}
+.bar{height:10px;border-radius:6px;background:#eef0f2;overflow:hidden}
+.bar>i{display:block;height:100%}
+.row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.row .lab{width:96px;font-size:13px}
+.row .val{width:64px;text-align:right;font-size:13px;font-weight:600}
+.note{font-size:12px;color:var(--muted);line-height:1.6;margin-top:8px}
+.pill{font-size:11px;padding:2px 7px;border-radius:20px;background:#eef0ff;color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+<header><div class="h">
+  <h1>Apex 데이터·혼잡도 대시보드</h1>
+  <div class="sub">기능 1 (혼잡도 예보) — 수집 데이터 · 계산치 · 예측 결과 한눈에</div>
+</div></header>
+<div class="wrap">
+
+  <h2>핵심 지표</h2>
+  <div class="grid g4">
+    <div class="card kpi"><div class="n">274</div><div class="l">대상 역 (1~8호선)</div><div class="s">역사면적 매칭 완료</div></div>
+    <div class="card kpi"><div class="n">598만</div><div class="l">체류인원 레코드</div><div class="s">역×날짜×시간, 2023–2025</div></div>
+    <div class="card kpi"><div class="n">6.41명</div><div class="l">예측 오차 MAE</div><div class="s">상관 0.97 · 2025 검증</div></div>
+    <div class="card kpi"><div class="n">80%</div><div class="l">검증 피크 일치</div><div class="s">열차혼잡 대비 (r=0.81)</div></div>
+  </div>
+
+  <h2>수집 데이터 인벤토리 & 신뢰도</h2>
+  <div class="card">
+    <table>
+      <tr><th>데이터</th><th>내용</th><th>용도</th><th>상태</th></tr>
+      <tr><td>OA-12921 승하차</td><td>역·일·시간대 (2023–25)</td><td>체류·예측 입력</td><td><span class="badge b-real">실제</span></td></tr>
+      <tr><td>OA-12928 열차혼잡도</td><td>재차/정원 % (30분, 요일별)</td><td>열차 내 혼잡</td><td><span class="badge b-real">실제</span></td></tr>
+      <tr><td>역사면적</td><td>대합실·승강장 ㎡</td><td>밀도(LOS) 분모</td><td><span class="badge b-real">실제</span></td></tr>
+      <tr><td>OA-12034 역간거리</td><td>역간 소요시간</td><td>ETA</td><td><span class="badge b-real">실제</span></td></tr>
+      <tr><td>OA-13290 환승소요</td><td>환승 도보시간</td><td>환승 ETA</td><td><span class="badge b-real">실제</span></td></tr>
+      <tr><td>OA-12033 환승인원</td><td>73역 요일별 환승량</td><td>유료구역 환승항</td><td><span class="badge b-real">실제</span> <span class="badge b-out">미통합</span></td></tr>
+      <tr><td>OA-22528 노선별지연 / OA-22197 9호선</td><td>지연·9호선 혼잡</td><td>보정·확장</td><td><span class="badge b-real">실제</span> <span class="badge b-out">미통합</span></td></tr>
+      <tr><td>공휴일(holidays)</td><td>2023–25 공휴일 56일</td><td>요일/공휴일 구분</td><td><span class="badge b-real">실제</span></td></tr>
+      <tr><td>체류인원·밀도·4단계</td><td>Little's Law 산출</td><td>승강장·대합실 혼잡</td><td><span class="badge b-approx">근사</span></td></tr>
+      <tr><td>예측(미래 체류)</td><td>HGB 하이브리드</td><td>도착시점 예보</td><td><span class="badge b-approx">근사</span></td></tr>
+      <tr><td>혼잡 원인(공사·지연·날씨)</td><td>데모 샘플</td><td>1-4 원인 표시</td><td><span class="badge b-fake">가짜</span></td></tr>
+    </table>
+    <div class="note"><span class="badge b-real">실제</span> 실측 데이터 · <span class="badge b-approx">근사</span> 실측+가정으로 계산 · <span class="badge b-fake">가짜</span> 데모 목업(실연동 예정)</div>
+  </div>
+
+  <h2>계산 파이프라인 (역사 내 혼잡)</h2>
+  <div class="grid g3">
+    <div class="card"><div class="pill">1. 계산</div><p style="margin:10px 0 0;font-size:14px">승하차 → <b>Little's Law</b> → 체류인원 → ÷면적 → 밀도</p></div>
+    <div class="card"><div class="pill">2. 등급</div><p style="margin:10px 0 0;font-size:14px">밀도 <b>백분위</b> → 4단계(여유/보통/주의/혼잡). 휠체어=6단계 보수적</p></div>
+    <div class="card"><div class="pill">3. 예측</div><p style="margin:10px 0 0;font-size:14px">과거 평균 + <b>HGB 보정</b> → 미래·도착시점 예보</p></div>
+  </div>
+
+  <h2>공휴일 패턴 학습 (빨간날 비교)</h2>
+  <div class="card">
+    <div class="row"><div class="lab">평일(월~금)</div><div class="bar"><i style="width:100%;background:#3b82c4"></i></div><div class="val">1.00×</div></div>
+    <div class="row"><div class="lab">토요일</div><div class="bar"><i style="width:81%;background:#1a9e6b"></i></div><div class="val">0.81×</div></div>
+    <div class="row"><div class="lab">일요일</div><div class="bar"><i style="width:59%;background:#1a9e6b"></i></div><div class="val">0.59×</div></div>
+    <div class="row"><div class="lab">공휴일</div><div class="bar"><i style="width:54%;background:#d64848"></i></div><div class="val">0.54×</div></div>
+    <div class="note">평균 승강장 밀도(평일=1.00 기준). <b>공휴일은 평일의 0.52배</b>로 확 낮고, 시간대 패턴 상관은 <b>일요일 0.996 · 토요일 0.997 · 평일 0.523</b> → <b>공휴일 ≈ 주말, 평일과는 확연히 다름</b>. 피크도 공휴일 16시 vs 평일 17시. → 예보는 공휴일을 별도 카테고리로 제공.</div>
+  </div>
+
+  <h2>검증 결과</h2>
+  <div class="grid g2">
+    <div class="card"><b>피크 정렬</b><p class="note">승강장 체류 피크가 실제 열차혼잡(OA-12928) 피크와 <b>80% 역에서 1시간 이내 일치</b>, 시간대 상관 중앙값 <b>0.81</b>. → 계산이 출퇴근 패턴을 정확히 포착.</p></div>
+    <div class="card"><b>볼륨 정합</b><p class="note">우리 승차 합계 ÷ CARD(OA-12914) ≈ <b>1.00</b> (2~8호선). 계산 스케일 정상. (1호선 0.66은 코레일 공용구간)</p></div>
+  </div>
+
+  <div class="note" style="margin-top:18px">데이터 출처: 서울 열린데이터광장 · 서울교통공사 · KRIC. 생성: Apex 파이프라인(<span class="pill">python -m src.pipeline / predict / export_forecast</span>)</div>
+</div>
+</body>
+</html>

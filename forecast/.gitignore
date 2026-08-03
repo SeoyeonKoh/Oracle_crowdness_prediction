@@ -1,0 +1,23 @@
+# 원천 데이터(대용량) — 저장소에 올리지 않음
+input/
+
+# 산출물: 화면 데모용 forecast.json + 소형 리포트만 포함, 나머지 제외
+output/*
+!output/forecast.json
+!output/calc_validation.md
+!output/prediction_metrics.md
+!output/prediction_sample.csv
+
+# 대용량/재생성 가능 산출물
+data/
+*.csv.gz
+*.joblib
+*.sqlite
+
+# 내부 프롬프트 로그·비활성 문서 — 공개 저장소에 올리지 않음
+proc/archive/
+
+# 파이썬·OS
+__pycache__/
+*.pyc
+.DS_Store

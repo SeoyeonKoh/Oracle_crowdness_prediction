@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apex 혼잡도 예보</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="phone">
+  <header class="hd">
+    <div class="hd-title">Apex 혼잡도 예보</div>
+    <div class="hd-sub">기능 1 · 도착 시점 예보</div>
+  </header>
+
+  <section class="controls">
+    <div class="row">
+      <label>요일<select id="day"></select></label>
+      <label>출발 시각<input id="depart" type="time" step="300" value="08:00"></label>
+    </div>
+    <div class="row">
+      <label>출발역<input id="from" list="stationList" placeholder="전체 역 검색" autocomplete="off"></label>
+      <label>도착역<input id="to" list="stationList" placeholder="전체 역 검색" autocomplete="off"></label>
+    </div>
+    <datalist id="stationList"></datalist>
+    <div class="seg" id="modeSeg">
+      <button type="button" data-m="일반" class="on">일반</button>
+      <button type="button" data-m="휠체어">휠체어 모드</button>
+    </div>
+    <div class="seg" id="zoneSeg">
+      <button type="button" data-z="p" class="on">승강장</button>
+      <button type="button" data-z="c">대합실</button>
+      <button type="button" data-z="t">열차</button>
+    </div>
+    <div class="seg" id="basisSeg">
+      <button type="button" data-b="rel" class="on">상대(백분위)</button>
+      <button type="button" data-b="abs">정원 대비(첨두)</button>
+    </div>
+  </section>
+
+  <section id="routeOpts" class="ropts"></section>
+  <section id="reco" class="reco"></section>
+  <section id="legend" class="legend"></section>
+  <section id="route" class="route"></section>
+
+  <footer class="ft" id="foot"></footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
