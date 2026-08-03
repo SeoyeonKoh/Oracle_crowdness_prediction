@@ -27,10 +27,9 @@ config/APIkey.py 는 .gitignore 에 등록되어 있어 깃허브에 올라가�
 # 발급: data.seoul.go.kr → 인증키 신청 → 일반 인증키 신청
 SEOUL_OPENDATA_GENERAL_KEY = ""
 
-# 실시간 지하철 인증키 — 아직 미발급
-# 지하철 도착정보 전용. 일반 인증키와 별개로 신청해야 함.
-# 참고: 도착정보는 실시간 도시데이터 응답의 SUB_STTS 에 이미 포함되어 있어
-#       당장은 필요하지 않다.
+# 실시간 지하철 인증키 — 현재 사용 중 (collectors/collect_subway_realtime.py)
+# 실시간 열차 위치·도착정보(swopenapi.seoul.go.kr) 전용. 일반 인증키와 별개 신청.
+# 한도 하루 1,000회로 일반 키와 독립.
 SEOUL_OPENDATA_SUBWAY_KEY = ""
 
 # ------------------------------------------------------------
