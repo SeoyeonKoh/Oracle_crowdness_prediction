@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from src import config
+from src.congestion import levels as congestion_level
 
 WEEKDAY = ["월", "화", "수", "목", "금", "토", "일"]
 DAYCATS = ["월", "화", "수", "목", "금", "토", "일", "공휴일"]
@@ -36,27 +37,28 @@ def main() -> None:
     print("[2/3] 요일·공휴일 재집계 …")
     agg = (df.groupby(["line", "station", "daycat", "hour"], as_index=False)
            .agg(board=("board", "mean"),
+                alight=("alight", "mean"),
+                transfer=("transfer", "mean"),
                 occ_platform=("occ_platform", "mean"),
                 occ_concourse=("occ_concourse", "mean"),
+                peak_platform=("peak_platform", "mean"),
+                platform_area=("platform_area", "first"),
+                concourse_area=("concourse_area", "first"),
                 density_platform=("density_platform", "mean"),
                 density_concourse=("density_concourse", "mean")))
 
-    # ── 순간 첨두(peak) & 정원대비% ─────────────────────────────
-    # peak = 평균 + 승차대기항의 나머지 절반(평균은 배차/2, 첨두는 배차 전체).
-    #   peak_platform  = occ_platform  + board × (배차/2)/60   (= board×배차/60 + …)
-    #   peak_concourse = occ_concourse + board × 게이트대기/60
-    tw = agg["hour"].map(config.train_wait_min) / 60.0          # 배차/2 (시간)
-    gw = config.GATE_WAIT_MIN / 60.0
-    peak_p = agg["occ_platform"] + agg["board"] * tw
-    peak_c = agg["occ_concourse"] + agg["board"] * gw
-    # 첨두 밀도 = 평균밀도 × (첨두/평균) — 면적 재조인 불필요
-    with np.errstate(divide="ignore", invalid="ignore"):
-        pdens = np.where(agg["occ_platform"] > 0,
-                         agg["density_platform"] * peak_p / agg["occ_platform"], 0.0)
-        cdens = np.where(agg["occ_concourse"] > 0,
-                         agg["density_concourse"] * peak_c / agg["occ_concourse"], 0.0)
-    agg["abspct_platform"] = (pdens / config.CRUSH_DENSITY["platform"] * 100).round(1)
-    agg["abspct_concourse"] = (cdens / config.CRUSH_DENSITY["concourse"] * 100).round(1)
+    # ── [PATCH 4·5] 첨두 밀도 → 절대 등급 ─────────────────────────
+    # 첨두(peak_platform)는 build 단계에서 이미 (승차+환승) × 배차간격 으로 계산됐다.
+    # 구 abspct(= occ + board×배차/2, 하차 포함)는 폐기 — 열차 도착 직전엔 직전
+    # 하차객이 이미 빠져나간 상태라 하차를 넣으면 이중계상이 된다.
+    # 여기서는 유효면적 기준 밀도로 환산하고 만원(CRUSH) 대비 %와 등급을 붙인다.
+    agg = congestion_level.add_peak_density(agg)
+    agg = congestion_level.add_level_abs(agg)
+    _n_measured = sum(
+        (int(r.line), str(r.station), int(r.hour)) in config._load_measured_headway()
+        for r in agg.itertuples(index=False))
+    if _n_measured:
+        print(f"      · 배차 실측 적용 셀: {_n_measured:,} (나머지는 노선·보간 폴백)")
 
     agg.round(4).to_csv(config.OUTPUT / "los_summary_byday.csv", index=False)
     print(f"      저장: output/los_summary_byday.csv  ({len(agg):,} 행)")

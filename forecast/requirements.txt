@@ -5,3 +5,6 @@ numpy>=1.23
 openpyxl>=3.1        # OA-12928 2025Q1·2026 xlsx 읽기 (교차검증 확장 시)
 scikit-learn>=1.3    # Phase 2 체류인원 예측 모델
 matplotlib>=3.7      # 산출물 시각화(선택)
+holidays>=0.40       # 공휴일 재집계(summarize_byday)
+requests>=2.28       # 실시간 API 클라이언트(weather 등, 선택)
+pytest>=7.0          # 테스트(tests/) — 없으면 `python3 tests/test_*.py` 로도 실행 가능

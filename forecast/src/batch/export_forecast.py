@@ -27,8 +27,10 @@ def build() -> dict:
     # 정원대비%(첨두 기반) 맵: (line,station,daycat,hour) -> (platform, concourse)
     abs_df = pd.read_csv(config.OUTPUT / "los_summary_byday.csv")
     _cl = lambda v: None if pd.isna(v) else round(float(v), 1)
+    # [PATCH 4·5] 소스 컬럼이 abspct_* → crushpct_*(첨두÷유효면적, 만원 대비 %)로
+    # 바뀌었다. JSON 스키마(pa/ca)는 그대로 두어 화면 변경 없이 동작한다.
     absmap = {(int(r.line), r.station, r.daycat, int(r.hour)):
-              (_cl(r.abspct_platform), _cl(r.abspct_concourse))
+              (_cl(r.crushpct_platform), _cl(r.crushpct_concourse))
               for r in abs_df.itertuples(index=False)}
     # per-cell: density(p,c)+badge(pb,cb)+정원대비%(pa,ca). 상대%는 화면이 pct_table로 계산.
     curve: dict = {}
@@ -36,11 +38,22 @@ def build() -> dict:
         f = service.forecast_at(data, line, station, daycat, hour, all_causes)
         p, c = f["platform"], f["concourse"]
         pa, ca = absmap.get((line, station, daycat, hour), (None, None))
+        # [STEP 4] 절대 등급·만원대비%·배지를 명시 필드로 내보낸다.
+        # badge_busier = 평소 대비 1.6배 이상 **그리고** 절대 등급이 주의 이상일 때만.
+        #   (한산한 역이 조금 붐볐다고 경고를 띄우지 않기 위한 결합 조건)
+        lv_p = congestion_level.level_abs_from_pct(pa)
+        lv_c = congestion_level.level_abs_from_pct(ca, zone="concourse")
         (curve.setdefault(str(line), {})
               .setdefault(station, {})
               .setdefault(daycat, {})[str(hour)]) = {
             "p": p["density"], "pb": p["badge"], "pa": pa,
             "c": c["density"], "cb": c["badge"], "ca": ca,
+            "level": lv_p,                 # 승강장 절대 4단계
+            "level_c": lv_c,               # 대합실 절대 4단계
+            # crush_pct(만원 대비 %)는 pa/ca 와 **완전히 같은 값**이라 중복 export하지
+            # 않는다(파일이 4MB→9.5MB로 불어난다). pa/ca 가 곧 crush_pct 다.
+            "badge_busier": bool(p["badge"]) and lv_p in ("주의", "혼잡"),
+            "badge_busier_c": bool(c["badge"]) and lv_c in ("주의", "혼잡"),
         }
 
     return {
@@ -52,7 +65,16 @@ def build() -> dict:
         },
         "days": ["월", "화", "수", "목", "금", "토", "일", "공휴일"],
         "levels": ["여유", "보통", "주의", "혼잡"],
-        "pctBands": congestion_level.LEVEL_PCT_BANDS,   # [50,80,95]
+        # [PATCH 5] 절대 등급 경계를 '데이터로' 내보낸다 — 화면에 하드코딩하지 않는다.
+        # crushpct(pa/ca) = 밀도÷CRUSH×100 이므로 경계도 만원 대비 %로 표현된다.
+        # 유효면적·컷을 튜닝해도 이 숫자만 바뀌고 스키마는 그대로다.
+        "absBands": {p: congestion_level.abs_break_pcts(p) for p in ("일반", "휠체어")},
+        "absMeta": {
+            "crush": config.CRUSH_DENSITY,
+            "effArea": config.EFFECTIVE_AREA_RATIO,
+            "note": "pa/ca = 첨두밀도 ÷ 만원밀도 × 100. 경계는 만원 대비 %.",
+        },
+        "pctBands": congestion_level.LEVEL_PCT_BANDS,   # [50,80,95] — 배지 근거용
         "pctTable": data.pct_table,                     # zone -> 밀도@백분위 0..100
         "lines": lines,                                 # line -> [station,...] 역번호순
         "allStations": data.all_stations,               # 전체 역명(검색용)

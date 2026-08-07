@@ -61,3 +61,5 @@ select,input{font-size:15px;padding:9px 8px;border:1px solid var(--line);border-
 .xfer{display:flex;align-items:center;gap:6px;margin:2px 4px 6px;font-size:12px;font-weight:600;color:var(--accent)}
 .xfer i{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block}
 .ft{margin:14px 12px 0;font-size:11px;color:var(--muted);line-height:1.6}
+
+.lgnote{width:100%;margin-top:6px;font-size:12px;color:var(--muted,#6b7280);line-height:1.5}

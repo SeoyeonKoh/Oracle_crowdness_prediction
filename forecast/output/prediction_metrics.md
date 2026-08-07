@@ -2,15 +2,37 @@
 
 학습 2023–2024 / 검증 2025 홀드아웃. 단위: 평균 체류인원(명).
 
-| target | 방식 | MAE | RMSE | sMAPE_% | corr |
-| --- | --- | --- | --- | --- | --- |
-| occ_platform | HGB 모델 | 6.41 | 15.64 | 13.1 | 0.967 |
-| occ_platform | seasonal-naive | 6.67 | 16.04 | 13.4 | 0.966 |
-| occ_concourse | HGB 모델 | 4.04 | 10.51 | 13.0 | 0.966 |
-| occ_concourse | seasonal-naive | 4.18 | 10.67 | 13.3 | 0.965 |
+| target | 방식 | MAE | RMSE | sMAPE_% | corr(pooled) | corr(역별 중앙값) | 등급 일치율 | skill_% |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| occ_platform | naive+월·시보정 ⭐운영 | 9.65 | 25.72 | 11.5 | 0.985 | 0.957 | 0.9968 | 3.3 |
+| occ_platform | HGB 모델 | 9.76 | 26.57 | 11.9 | 0.984 | 0.936 | 0.9967 | 2.2 |
+| occ_platform | seasonal-naive | 9.98 | 26.94 | 12.2 | 0.983 | 0.933 | 0.9968 | 0.0 |
+| occ_concourse | naive+월·시보정 ⭐운영 | 3.63 | 8.38 | 12.0 | 0.98 | 0.978 | 1.0 | 13.1 |
+| occ_concourse | HGB 모델 | 4.04 | 10.51 | 13.0 | 0.966 | 0.946 | 1.0 | 3.2 |
+| occ_concourse | seasonal-naive | 4.18 | 10.67 | 13.3 | 0.965 | 0.944 | 1.0 | 0.0 |
+| peak_platform | naive+월·시보정 ⭐운영 | 11.46 | 30.59 | 12.3 | 0.983 | 0.959 | 0.9961 | 3.0 |
+| peak_platform | HGB 모델 | 11.58 | 30.87 | 12.7 | 0.983 | 0.947 | 0.9959 | 2.0 |
+| peak_platform | seasonal-naive | 11.81 | 31.37 | 12.9 | 0.982 | 0.944 | 0.9961 | 0.0 |
 
 ## 해석
-- **occ_platform**: HGB가 seasonal-naive 대비 MAE +3.9% (개선).
-- **occ_concourse**: HGB가 seasonal-naive 대비 MAE +3.2% (개선).
+- **occ_platform**: seasonal-naive 대비 MAE 개선 — HGB +2.2% / naive+보정 +3.3%
+- **occ_concourse**: seasonal-naive 대비 MAE 개선 — HGB +3.2% / naive+보정 +13.1%
+- **peak_platform**: seasonal-naive 대비 MAE 개선 — HGB +2.0% / naive+보정 +3.0%
+
+### 공휴일 보정계수 (naive 키에 공휴일이 없어 평일로 과대예측되는 것을 보정)
+
+- occ_platform: **×0.817**
+- occ_concourse: **×0.550**
+- peak_platform: **×0.828**
+- ⚠️ **등급 일치율(99.6~100%)은 포화 지표다.** 전체 셀의 대부분이 '여유'라 예측이 조금 틀려도 같은 칸에 남는다. 등급이 갈리는 상위 구간에서만 따로 봐야 의미가 있다 — 현재는 '등급을 뒤집을 만큼 크게 틀리지는 않는다'는 하한 보증으로만 읽을 것.
+- 공휴일 계수(×0.82)는 요약 리포트의 '평일의 0.74배'와 정의가 다르다. 0.74는 일 평균 밀도 비율, 0.82는 naive 예측 대비 비율이다(naive가 이미 요일 평균을 반영하므로 격차가 작다).
+
+## 결론: HGB 대신 naive+보정을 운영으로 채택
+
+- HGB의 이득(+2.0~3.2%)을 **(월,시간) 보정계수 룩업 하나가 그대로 재현**한다.
+- 원인은 구조적이다: HGB 입력에 seasonal-naive 예측값(`snaive`)을 피처로 넣어, 모델이 할 수 있는 일이 그 위의 미세 보정으로 제한된다.
+- 같은 정확도라면 단순한 쪽이 낫다 — 학습 즉시, 산출물 수 KB, 해석 가능, 예측 시 scikit-learn 불필요.
+- ⚠️ `corr(pooled)`는 역 규모 차이 때문에 0.98까지 부풀려진다. 역별 상관 중앙값이 실제 시간패턴 일치도이며, 여기서도 naive와 모델의 차이는 0.003 수준이다.
+- 참고: 화면 서빙 경로(`export_forecast` → `los_summary_byday.csv`)는 과거 평균을 직접 쓰므로 이 모델을 통과하지 않는다. 단순화의 위험이 낮다.
 
 > 캘린더 피처만 사용(승하차 실측 없이 미래 예측). 실시간 요인(날씨·POI·행사) 확보 시 추가 개선 여지.

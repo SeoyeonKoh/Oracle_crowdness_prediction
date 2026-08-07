@@ -1,0 +1,15 @@
+# Codex CLI 프로젝트 설정
+# UserPromptSubmit 훅 — 유저 프롬프트를 proc/archive/prompts/YYYY-MM-DD.md 에 기록한다.
+# 훅은 stdin 으로 JSON(prompt, session_id, cwd 등)을 받는다. 스크립트가 cwd 로 로그 경로를 자체 해석한다.
+# ※ Codex 를 저장소 루트에서 실행해야 -File 상대경로가 해석된다 (Codex 는 CODEX_PROJECT_DIR 같은 변수를 제공하지 않음).
+
+[features]
+hooks = true
+
+[[hooks.UserPromptSubmit]]
+
+[[hooks.UserPromptSubmit.hooks]]
+type = "command"
+command         = "bash .codex/hooks/log_user_input.sh"
+command_windows = "powershell -NoProfile -ExecutionPolicy Bypass -File .codex/hooks/log_user_input.ps1"
+timeout = 30

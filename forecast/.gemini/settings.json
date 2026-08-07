@@ -1,0 +1,19 @@
+{
+  "context": {
+    "fileName": ["AGENTS.md", "GEMINI.md"]
+  },
+  "hooks": {
+    "BeforeAgent": [
+      {
+        "hooks": [
+          {
+            "name": "log-user-prompt",
+            "type": "command",
+            "command": "node .gemini/hooks/log_user_input.cjs",
+            "timeout": 10000
+          }
+        ]
+      }
+    ]
+  }
+}

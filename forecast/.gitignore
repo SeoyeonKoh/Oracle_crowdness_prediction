@@ -1,23 +1,96 @@
-# 원천 데이터(대용량) — 저장소에 올리지 않음
-input/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# 산출물: 화면 데모용 forecast.json + 소형 리포트만 포함, 나머지 제외
+node_modules
+dist
+dist-ssr
+*.local
+*.tsbuildinfo
+
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Test and coverage outputs
+test-results/
+playwright-report/
+blob-report/
+coverage/
+.nyc_output/
+.vitest/
+
+# Build and framework caches
+.cache/
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+.vercel/
+.netlify/
+.wrangler/
+
+# Python environments and caches
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+.omc/
+.omx/
+.omg/
+.playwright-cli/
+.playwright-mcp/
+
+# Agent-local overrides and locks
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# 원천 데이터는 공유 목적으로 포함한다(서울 열린데이터광장 공개자료).
+
 output/*
+!output/.gitkeep
+# 화면 데모에 필요한 산출물 + 소형 리포트는 포함 (대용량 원천/중간산출은 제외)
 !output/forecast.json
 !output/calc_validation.md
 !output/prediction_metrics.md
 !output/prediction_sample.csv
+!output/validate_live.md
+!output/constant_decision.md
+!output/최종_검증리포트.md
 
-# 대용량/재생성 가능 산출물
-data/
-*.csv.gz
-*.joblib
-*.sqlite
+data/*
+!data/.gitkeep
+# 학습 모델은 models/ 로 옮겨 포함한다(data/ 규칙 회피).
+!models/
 
-# 내부 프롬프트 로그·비활성 문서 — 공개 저장소에 올리지 않음
-proc/archive/
-
-# 파이썬·OS
-__pycache__/
+**/__pycache__/
+proc/archive/prompts/
 *.pyc
-.DS_Store
+firebase-debug.log
+
+# Windows
+Thumbs.db
+Desktop.ini
