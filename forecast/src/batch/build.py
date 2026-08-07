@@ -43,23 +43,17 @@ def build_wide(long: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_transfer(detail: pd.DataFrame) -> pd.DataFrame:
-    """OA-12033 환승인원(역·요일유형 일평균)을 하차 프로파일로 시간 분배해 transfer 컬럼 추가.
+    """OA-12033 환승인원 → transfer 컬럼. occupancy.add_transfer_estimate 로 일원화.
 
-    근사: 역 환승총량을 해당 역의 호선 수로 균등 분할 → 각 (date,line,station)의
-          하차 시간분포로 배분(환승 시간대 데이터 부재, Notion 계획의 '하차프로파일 근사').
+    [PATCH 2] 구현은 occupancy 쪽 한 벌만 유지한다. 구 버전의 '호선 균등분할'은
+    폐기했다 — 2호선과 지선의 규모 차이를 무시해 환승 부하를 잘못 배분했다.
+    새 방식은 (승차+하차) 활동 비례로 시간대·노선에 동시 배분한다(역 일평균 보존).
     """
     tv = io_load.load_transfer_volume()
     if not tv:
         detail["transfer"] = 0.0
         return detail
-    tvmap = {f"{s}|{d}": v for (s, d), v in tv.items()}
-    key = detail["station"].astype(str) + "|" + detail["dow3"].astype(str)
-    nlines = detail.groupby("station")["line"].transform("nunique")
-    per_line_daily = key.map(tvmap).fillna(0.0) / nlines
-    daily_alight = detail.groupby(["date", "line", "station"])["alight"].transform("sum")
-    share = np.where(daily_alight > 0, detail["alight"] / daily_alight, 0.0)
-    detail["transfer"] = (per_line_daily.to_numpy() * share)
-    return detail
+    return occupancy.add_transfer_estimate(detail, tv)
 
 
 def summarize(detail: pd.DataFrame) -> pd.DataFrame:
@@ -134,18 +128,25 @@ def main() -> None:
     area = io_load.load_station_area()
     detail = station_master.attach_area(wide, area)
     detail = add_transfer(detail)
-    detail = occupancy.add_occupancy(detail)
+    # [PATCH 2] 환승 이동시간은 OA-13290 역별 실측 우선(없으면 폴백 상수)
+    walk_by_station = occupancy.station_transfer_walk_min(io_load.load_transfer_times())
+    detail = occupancy.add_occupancy(detail, walk_by_station)
     detail = los.add_los(detail)
     unmatched = station_master.unmatched_report(detail)
     print(f"      면적 미매칭: {len(unmatched)}건")
 
     print("[4/6] 상세 산출물 저장 …")
+    # [PATCH 4·5] peak_platform(첨두)과 면적을 함께 저장 — 하류(summarize_byday)에서
+    # 유효면적 기준 첨두 밀도·절대 등급을 재계산할 수 있어야 한다.
     detail_cols = ["date", "line", "station", "daytype", "hour",
-                   "board", "alight", "occ_concourse", "occ_platform",
+                   "board", "alight", "transfer",
+                   "occ_concourse", "occ_platform", "peak_platform",
+                   "concourse_area", "platform_area",
                    "density_concourse", "density_platform",
                    "los_concourse", "los_platform"]
     out = detail[detail_cols].copy()
-    for c in ["board", "alight", "occ_concourse", "occ_platform",
+    for c in ["board", "alight", "transfer",
+              "occ_concourse", "occ_platform", "peak_platform",
               "density_concourse", "density_platform"]:
         out[c] = out[c].round(3)
     out.to_csv(config.OUTPUT / "occupancy_hourly.csv.gz", index=False,
