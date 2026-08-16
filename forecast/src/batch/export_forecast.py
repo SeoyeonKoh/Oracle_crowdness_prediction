@@ -25,7 +25,7 @@ def build() -> dict:
 
     lines = {str(ln): stns for ln, stns in sorted(data.order.items())}
     # 정원대비%(첨두 기반) 맵: (line,station,daycat,hour) -> (platform, concourse)
-    abs_df = pd.read_csv(config.OUTPUT / "los_summary_byday.csv")
+    abs_df = service.load_summary()   # 별칭 통일본 — curve 키와 동일 기준
     _cl = lambda v: None if pd.isna(v) else round(float(v), 1)
     # [PATCH 4·5] 소스 컬럼이 abspct_* → crushpct_*(첨두÷유효면적, 만원 대비 %)로
     # 바뀌었다. JSON 스키마(pa/ca)는 그대로 두어 화면 변경 없이 동작한다.
@@ -76,7 +76,10 @@ def build() -> dict:
         },
         "pctBands": congestion_level.LEVEL_PCT_BANDS,   # [50,80,95] — 배지 근거용
         "pctTable": data.pct_table,                     # zone -> 밀도@백분위 0..100
-        "lines": lines,                                 # line -> [station,...] 역번호순
+        "lines": lines,                                 # line -> [station,...] 운행 순서(표시용)
+        # 경로 탐색은 lines 배열이 아니라 edges 를 써야 한다. 2호선 순환 폐합·성수·신정
+        # 지선, 5호선 마천지선, 6호선 응암순환은 배열 인접으로 표현되지 않는다.
+        "edges": {str(l): es for l, es in sorted(data.edges.items())},
         "allStations": data.all_stations,               # 전체 역명(검색용)
         "segMin": _seg_min(data),                        # line -> station -> 전역→현역 분(실측)
         "xferMin": _xfer_min(data),                      # station -> {"a-b": 환승 분(실측)}

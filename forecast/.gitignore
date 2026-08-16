@@ -68,12 +68,14 @@ CLAUDE.local.md
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 
-# 원천 데이터는 공유 목적으로 포함한다(서울 열린데이터광장 공개자료).
+input/*
+!input/.gitkeep
 
 output/*
 !output/.gitkeep
 # 화면 데모에 필요한 산출물 + 소형 리포트는 포함 (대용량 원천/중간산출은 제외)
 !output/forecast.json
+!output/forecast_schema.md
 !output/calc_validation.md
 !output/prediction_metrics.md
 !output/prediction_sample.csv
@@ -83,8 +85,6 @@ output/*
 
 data/*
 !data/.gitkeep
-# 학습 모델은 models/ 로 옮겨 포함한다(data/ 규칙 회피).
-!models/
 
 **/__pycache__/
 proc/archive/prompts/

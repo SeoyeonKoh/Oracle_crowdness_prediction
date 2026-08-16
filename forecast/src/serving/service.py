@@ -36,7 +36,9 @@ def _clean(v):
 
 @dataclass
 class ForecastData:
-    order: dict = field(default_factory=dict)          # line -> [station,...] 역번호순
+    order: dict = field(default_factory=dict)          # line -> [station,...] 운행 순서(표시용)
+    edges: dict = field(default_factory=dict)          # line -> [[a,b,min],...] 실제 인접(순환·지선 반영)
+    adj: dict = field(default_factory=dict)            # (line,station) -> [(이웃역, 분),...]
     curve: dict = field(default_factory=dict)          # (line,station,daycat,hour) -> {zone:density}
     daily_mean: dict = field(default_factory=dict)     # (line,station,daycat,zone) -> mean density
     breaks: dict = field(default_factory=dict)
@@ -47,17 +49,37 @@ class ForecastData:
     xfer_time: dict = field(default_factory=dict)      # (station,from_line,to_line) -> 환승 분 (실측)
 
 
+def load_summary() -> pd.DataFrame:
+    """los_summary_byday.csv + 별칭 통일. 그래프 노드와 키를 맞추는 단일 진입점.
+
+    별칭 통일 후 같은 역이 두 이름으로 실려 있던 행(4호선 당고개/불암산)이 한 키로
+    겹치므로 셀 단위로 평균 낸다. 겹치지 않는 역은 값이 그대로다.
+    """
+    df = pd.read_csv(config.OUTPUT / "los_summary_byday.csv")
+    df["station"] = df["station"].map(io_load.normalize_station)
+    keys = ["line", "station", "daycat", "hour"]
+    if df.duplicated(subset=keys).any():
+        num = [c for c in df.columns if c not in keys and pd.api.types.is_numeric_dtype(df[c])]
+        df = df.groupby(keys, as_index=False)[num].mean()
+    return df
+
+
 def load_data() -> ForecastData:
-    summary = pd.read_csv(config.OUTPUT / "los_summary_byday.csv")
-    master = io_load.load_station_master()
+    summary = load_summary()
     # % 기준 분포는 평일(월~금)로 고정 → 요일 간 비교 가능
     wk = summary[summary["daycat"].isin(WEEKDAYS)].rename(columns={"daycat": "daytype"})
     wk["daytype"] = "평일"
     breaks = congestion_level.compute_breaks(wk)
     pct_table = congestion_level.build_pct_table(wk)
 
-    order = {int(l): list(g.sort_values("station_no")["station"])
-             for l, g in master.groupby("line")}
+    order = io_load.load_line_order()
+    edges = io_load.load_line_edges(order)
+    adj: dict = {}
+    for line, es in edges.items():
+        for a, b, t in es:
+            w = t if t else MIN_PER_STATION
+            adj.setdefault((line, a), []).append((b, w))
+            adj.setdefault((line, b), []).append((a, w))
 
     curve, daily = {}, {}
     for r in summary.itertuples(index=False):
@@ -75,7 +97,8 @@ def load_data() -> ForecastData:
             name_lines.setdefault(s, []).append(line)
     all_stations = sorted(name_lines.keys())
 
-    return ForecastData(order=order, curve=curve, daily_mean=daily, breaks=breaks,
+    return ForecastData(order=order, edges=edges, adj=adj,
+                        curve=curve, daily_mean=daily, breaks=breaks,
                         pct_table=pct_table, name_lines=name_lines, all_stations=all_stations,
                         seg_time=io_load.load_travel_times(),
                         xfer_time=io_load.load_transfer_times())
@@ -95,15 +118,13 @@ def _xfer(data, station, a, b):
 
 
 def _neighbors(data: ForecastData, node):
-    """(line,station) 인접 노드: 같은 호선 앞뒤 역(실측 소요) + 같은 역 타 호선(실측 환승)."""
+    """(line,station) 인접 노드: 같은 호선 인접역(실측 소요) + 같은 역 타 호선(실측 환승).
+
+    인접은 `data.adj`(명시적 간선)에서 온다. 배열 index±1로 구하면 2호선 순환 폐합이
+    빠지고 지선이 분기점 대신 배열상 앞 역에 붙는다.
+    """
     line, st = node
-    seq = data.order[line]
-    i = seq.index(st)
-    out = []
-    if i > 0:  # 이전 역: 두 역 사이 시간 = 현재 역의 seg
-        out.append(((line, seq[i - 1]), _seg(data, line, st), "move"))
-    if i < len(seq) - 1:  # 다음 역: 다음 역의 seg
-        out.append(((line, seq[i + 1]), _seg(data, line, seq[i + 1]), "move"))
+    out = [((line, nb), w, "move") for nb, w in data.adj.get((line, st), [])]
     for other in data.name_lines.get(st, []):
         if other != line:
             out.append(((other, st), _xfer(data, st, line, other), "transfer"))

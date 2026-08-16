@@ -43,8 +43,14 @@
   <section id="legend" class="legend"></section>
   <section id="route" class="route"></section>
 
+  <div class="rtbar" id="rtStatus">실시간 확인 중…</div>
   <footer class="ft" id="foot"></footer>
 </div>
-<script src="app.js?v=5"></script>
+<!-- 실시간 JSON 주소. 서버가 10분마다 이 파일을 덮어쓴다.
+     OCI 버킷의 읽기 PAR URL 을 여기에 넣으면 배포본에서도 실시간이 붙는다.
+     비워두면 로컬 동기화본(../../data/realtime.json)을 본다. -->
+<script>window.REALTIME_URL = '';</script>
+<script src="realtime.js?v=1"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

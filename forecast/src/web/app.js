@@ -72,6 +72,9 @@ async function boot() {
     `공휴일은 별도 카테고리(≈ 일요일). ETA는 역간거리·환승소요 실측 반영. ` +
     `시간 내 10분 변화는 <b>열차혼잡 30분 형태</b>로 분해(총량보존).`;
   render();
+
+  // 실시간(배차·도착·혼잡도)은 부가정보 — 실패해도 위 예보 화면은 그대로 둔다.
+  rtStart(() => { $('rtStatus').textContent = rtStatusText(); render(); });
 }
 
 // ── 조회·보간·백분위 ──────────────────────────────────────────
@@ -133,12 +136,23 @@ function levelOf(pct) {
 }
 
 // ── 환승 그래프 최단시간 경로(Dijkstra) ────────────────────────
-const segMin = (line, st) => (DB.segMin?.[line]?.[st]) ?? DB.meta.min_per_station;
 const xferMin = (st, a, b) => (DB.xferMin?.[st]?.[`${a}-${b}`]) ?? (DB.xferMin?.[st]?.[`${b}-${a}`]) ?? DB.meta.transfer_min;
+// 인접은 DB.edges(명시적 간선)에서 온다. lines 배열의 index±1로 구하면 2호선 순환
+// 폐합이 빠지고 성수·신정지선, 5호선 마천지선, 6호선 응암순환이 엉뚱하게 이어진다.
+// DB는 비동기 로드라 최초 호출 시점에 만든다.
+let _adj = null;
+function adjacency() {
+  if (_adj) return _adj;
+  _adj = {};
+  const put = (l, x, y, w) => { (_adj[l + '|' + x] ||= []).push([y, w]); };
+  Object.entries(DB.edges || {}).forEach(([l, es]) => es.forEach(([x, y, w]) => {
+    const t = w ?? DB.meta.min_per_station;
+    put(l, x, y, t); put(l, y, x, t);
+  }));
+  return _adj;
+}
 function neighbors(line, st) {
-  const seq = DB.lines[line], i = seq.indexOf(st), out = [];
-  if (i > 0) out.push([line, seq[i - 1], segMin(line, st), false]);            // 두 역 시간 = 현재역 seg
-  if (i < seq.length - 1) out.push([line, seq[i + 1], segMin(line, seq[i + 1]), false]);
+  const out = (adjacency()[line + '|' + st] || []).map(([nb, w]) => [+line, nb, w, false]);
   (NAME_LINES[st] || []).forEach(o => { if (o !== +line) out.push([o, st, xferMin(st, +line, o), true]); });
   return out;
 }
@@ -333,7 +347,7 @@ function render() {
     return trans +
       `<div class="stop"><div class="rail" style="--lc:${c}"><span class="rdot"></span></div>` +
       `<div class="time">${fmt(f.arr)}<b>+${off}분</b></div>` +
-      `<div class="mid"><div class="stn">${leg.station}</div><div class="tags">${lineTag}${badge}${cs}</div></div>` +
+      `<div class="mid"><div class="stn">${leg.station}</div><div class="tags">${lineTag}${badge}${rtTags(leg.line, leg.station)}${cs}</div></div>` +
       `<span class="pill p-${f.level}">${f.level}<span class="pv">${f.pct}%</span></span></div>`;
   }).join('');
 }
