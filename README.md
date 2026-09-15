@@ -4,22 +4,25 @@
 
 1. **데이터 수집** (`collectors/`) — 소급 조회가 불가능한 실시간 데이터를 스냅샷으로 쌓는다.
 2. **혼잡도 예보** (`forecast/`) — 공개데이터로 역사 내·열차 내 혼잡을 계산·예측하고, 도착 시점 기준으로 경로를 안내한다.
+3. **역사 구조 데이터** (`station_layout/`) — 이동약자 경로 안내에 필요한 층별 시설·환승 동선을 정리한다.
 
-> 데이터 흐름: **수집(실시간 축적) → forecast(계산·예측) → 화면(예보·대시보드)**
+> 데이터 흐름: **수집(실시간 축적) → forecast(계산·예측) → 화면(예보·대시보드) + station_layout(동선 안내)**
 
 ## 폴더 구조
 ```
 .
 ├── collectors/     실시간 데이터 수집기        → collectors/README.md
 │   ├── collect_citydata.py          서울 실시간 도시데이터
-│   └── collect_subway_realtime.py   실시간 지하철(위치·도착)
+│   ├── collect_subway_realtime.py   실시간 지하철(위치·도착)
+│   └── facility_collector.py        지하철 편의시설 데이터
 ├── config/         인증키·설정               → config/README.md
 ├── scripts/        서버 설정·자동화(cron)     → scripts/README.md
-├── data/           수집 원본(.jsonl, Git 제외)
+├── data/           공개 가능한 정적 시설 CSV
 ├── logs/           실행 로그(Git 제외)
 ├── forecast/       혼잡도 예보 모듈           → forecast/README.md
-│   ├── src/        계산·예측·서비스·화면       → forecast/src/README.md
+│   ├── src/        계산·예측·서비스·화면
 │   └── output/     forecast.json 등 산출물
+├── station_layout/ 역사 시설·동선 데이터       → station_layout/README.md
 ├── requirements.txt   (수집기용: requests)
 └── README.md
 ```
@@ -37,8 +40,8 @@ python3 collectors/collect_subway_realtime.py
 
 ## 깃허브 공개 기준
 기준 하나: **인터넷에 공개돼도 괜찮은가?**
-- 올라감: 코드, `scripts/`, `config/APIkey_example.py`(빈 서식), 문서, `forecast/output/forecast.json`
-- 안 올라감(.gitignore): `config/APIkey.py`, `data/`, `logs/`, `wallet/`, `forecast/input/`, 대용량 산출물
+- 올라감: 코드, `scripts/`, `config/APIkey_example.py`(빈 서식), 문서, 공개 가능한 정적 CSV, `forecast/output/forecast.json`, `station_layout/output/` 산출물
+- 안 올라감(.gitignore): `config/APIkey.py`, 실시간 원본 로그(`*.jsonl`), `logs/`, `wallet/`, 개인/대용량 입력 파일, 대용량 산출물
 - push 전 `git status` 로 `APIkey.py` 가 목록에 없는지 확인
 
 ---
